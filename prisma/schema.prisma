@@ -1,0 +1,73 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  CUSTOMER
+  MANAGER
+  AGENT
+}
+
+enum ShipmentStatus {
+  CREATED
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id       String @id @default(uuid())
+  name     String
+  email    String @unique
+  password String
+  role     Role   @default(CUSTOMER)
+
+  createdShipments  Shipment[] @relation("CreatedShipments")
+  assignedShipments Shipment[] @relation("AssignedShipments")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Shipment {
+  id               String         @id @default(uuid())
+  trackingId       String         @unique
+  receiverName     String
+  pickupLocation   String
+  deliveryLocation String
+  status           ShipmentStatus @default(CREATED)
+
+  createdById String
+  agentId     String?
+
+  createdBy User  @relation("CreatedShipments", fields: [createdById], references: [id])
+  agent     User? @relation("AssignedShipments", fields: [agentId], references: [id])
+
+  trackingHistory ShipmentTracking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdById])
+  @@index([agentId])
+}
+
+model ShipmentTracking {
+  id         String         @id @default(uuid())
+  shipmentId String
+  status     ShipmentStatus
+  location   String
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([shipmentId])
+}
